@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="نظام لودي">
+<meta name="theme-color" content="#f59e0b">
+<title>نظام لودي | خطتي اليومية</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #f59e0b;
+    --accent2: #10b981;
+    --accent3: #ef4444;
+    --text: #f0f0f5;
+    --muted: #6b7280;
+    --gold: linear-gradient(135deg, #f59e0b, #fcd34d);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 20%, rgba(245,158,11,0.05) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(16,185,129,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: calc(80px + var(--safe-bottom));
+  }
+
+  /* Install banner */
+  .install-banner {
+    display: none;
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05));
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 12px 20px 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .install-banner.show { display: flex; }
+  .install-banner-text { flex: 1; font-size: 13px; color: var(--text); line-height: 1.5; }
+  .install-banner-text strong { color: var(--accent); display: block; margin-bottom: 2px; }
+
+  .install-btn {
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .dismiss-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  /* Header */
+  .header {
+    background: rgba(10,10,15,0.85);
+    padding: calc(16px + var(--safe-top)) 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .app-title {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    background: var(--gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .date-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .fasting-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .fasting-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .fasting-text { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .fasting-time { font-weight: 700; color: var(--accent2); }
+
+  /* Sections */
+  .section { display: none; padding: 16px 20px; }
+  .section.active { display: block; }
+
+  /* Meal Cards */
+  .meal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .meal-card::before {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 4px;
+    border-radius: 0 16px 16px 0;
+  }
+
+  .meal-card.m1::before { background: var(--accent); }
+  .meal-card.m2::before { background: var(--accent2); }
+  .meal-card.m3::before { background: #3b82f6; }
+  .meal-card.m4::before { background: #8b5cf6; }
+
+  .meal-time {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .time-label {
+    font-family: 'Tajawal', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .m2 .time-label { color: var(--accent2); }
+  .m3 .time-label { color: #3b82f6; }
+  .m4 .time-label { color: #8b5cf6; }
+
+  .alarm-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .alarm-btn.off { background: rgba(107,114,128,0.15); color: var(--muted); border: 1px solid var(--border); }
+  .alarm-btn.on  { background: rgba(245,158,11,0.15); color: var(--accent); border: 1px solid rgba(245,158,11,0.3); }
+
+  .meal-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: rgba(245,158,11,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(245,158,11,0.2);
+  }
+  .m2 .meal-badge { background:rgba(16,185,129,0.1); color:var(--accent2); border-color:rgba(16,185,129,0.2); }
+  .m3 .meal-badge { background:rgba(59,130,246,0.1); color:#3b82f6; border-color:rgba(59,130,246,0.2); }
+  .m4 .meal-badge { background:rgba(139,92,246,0.1); color:#8b5cf6; border-color:rgba(139,92,246,0.2); }
+
+  .items-list { list-style: none; }
+  .items-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 14px;
+    color: #d0d0e0;
+    line-height: 1.5;
+  }
+  .items-list li:last-child { border-bottom: none; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:7px; }
+  .m2 .dot { background:var(--accent2); }
+  .m3 .dot { background:#3b82f6; }
+  .m4 .dot { background:#8b5cf6; }
+
+  .benefit-tag {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* Forbidden */
+  .forbidden-card {
+    background: rgba(239,68,68,0.06);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .forbidden-title { color:var(--accent3); font-size:14px; font-weight:700; margin-bottom:10px; }
+  .forbidden-list { display:flex; flex-wrap:wrap; gap:8px; }
+  .forbidden-item { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; background:rgba(239,68,68,0.1); color:#fca5a5; border:1px solid rgba(239,68,68,0.2); }
+
+  /* Training */
+  .training-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; }
+  .training-title { font-size:15px; font-weight:700; margin-bottom:14px; color:var(--accent); }
+  .ex-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .ex-row:last-child { border-bottom:none; }
+  .ex-name { font-size:14px; color:#d0d0e0; }
+  .ex-reps { font-size:13px; font-weight:700; color:var(--accent); background:rgba(245,158,11,0.1); padding:4px 10px; border-radius:20px; }
+
+  /* Weekly */
+  .weekly-card { background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.05)); border:1px solid rgba(16,185,129,0.2); border-radius:16px; padding:16px; margin-bottom:14px; }
+  .weekly-title { font-size:13px; font-weight:700; color:var(--accent2); margin-bottom:10px; }
+  .weekly-item { font-size:13px; color:#d0d0e0; padding:5px 0; display:flex; align-items:center; gap:8px; }
+
+  /* Water */
+  .water-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; }
+  .water-title { font-size:14px; font-weight:700; color:#3b82f6; margin-bottom:12px; }
+  .water-cups { display:flex; gap:8px; flex-wrap:wrap; }
+  .water-cup { width:38px; height:38px; border-radius:8px; border:2px solid rgba(59,130,246,0.3); background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all 0.2s; user-select:none; }
+  .water-cup.filled { background:rgba(59,130,246,0.2); border-color:#3b82f6; }
+  .water-label { margin-top:8px; font-size:12px; color:var(--muted); }
+
+  /* Today header */
+  .today-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; }
+  .today-label { font-size:12px; color:var(--muted); font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+  .streak-badge { display:flex; align-items:center; gap:6px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); padding:6px 14px; border-radius:20px; font-size:13px; font-weight:700; color:var(--accent); cursor:pointer; user-select:none; }
+
+  /* Shopping */
+  .shop-progress { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+  .progress-bar-wrap { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .progress-bar-fill { height:100%; background:var(--gold); border-radius:3px; transition:width 0.4s; }
+  .progress-text { font-size:13px; color:var(--muted); white-space:nowrap; }
+  .reset-btn { padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--muted); font-family:'Cairo',sans-serif; font-size:12px; cursor:pointer; }
+
+  .shop-category { margin-bottom:20px; }
+  .shop-cat-title { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:1px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .shop-cat-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .shop-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; cursor:pointer; transition:all 0.2s; }
+  .shop-item.checked { opacity:0.5; background:rgba(16,185,129,0.05); border-color:rgba(16,185,129,0.2); }
+  .shop-check { width:22px; height:22px; border-radius:6px; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; transition:all 0.2s; color:transparent; }
+  .shop-item.checked .shop-check { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+  .shop-item-name { flex:1; font-size:14px; font-weight:600; }
+  .shop-item-qty { font-size:12px; color:var(--muted); background:rgba(255,255,255,0.05); padding:3px 10px; border-radius:20px; white-space:nowrap; }
+
+  /* Alarm toast */
+  .alarm-toast { position:fixed; top:-120px; left:50%; transform:translateX(-50%); background:var(--accent); color:#000; padding:14px 24px; border-radius:14px; font-weight:700; font-size:15px; z-index:9999; transition:top 0.4s cubic-bezier(.175,.885,.32,1.275); text-align:center; box-shadow:0 8px 32px rgba(245,158,11,0.4); max-width:340px; width:90%; }
+  .alarm-toast.show { top: calc(20px + var(--safe-top)); }
+
+  /* Bottom nav */
+  .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; background:rgba(19,19,26,0.95); border-top:1px solid var(--border); display:flex; padding:12px 0 calc(12px + var(--safe-bottom)); z-index:200; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+  .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; padding:4px; }
+  .nav-icon { font-size:22px; }
+  .nav-label { font-size:11px; font-weight:600; color:var(--muted); }
+  .nav-item.active .nav-label { color:var(--accent); }
+
+  /* Offline banner */
+  .offline-badge { display:none; position:fixed; bottom:calc(80px + var(--safe-bottom)); left:50%; transform:translateX(-50%); background:#1a1a24; border:1px solid var(--border); padding:8px 16px; border-radius:20px; font-size:12px; color:var(--muted); z-index:500; }
+  .offline-badge.show { display:block; }
+</style>
+</head>
+<body>
+
+<div class="alarm-toast" id="alarmToast"></div>
+<div class="offline-badge" id="offlineBadge">📵 أنت أوف لاين — التطبيق شغال عادي</div>
+
+<div class="app">
+
+  <!-- Install Banner (shown when installable) -->
+  <div class="install-banner" id="installBanner">
+    <div class="install-banner-text">
+      <strong>📲 ثبّت التطبيق</strong>
+      أضفه للشاشة الرئيسية عشان يشتغل زي أي app
+    </div>
+    <button class="install-btn" onclick="installApp()">تثبيت</button>
+    <button class="dismiss-btn" onclick="dismissInstall()">✕</button>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">💪 نظام لودي</div>
+      <div class="date-badge" id="dateDisplay"></div>
+    </div>
+    <div class="fasting-bar">
+      <div class="fasting-dot"></div>
+      <div class="fasting-text">⏳ الصيام: 11م ← <span class="fasting-time">2م</span> &nbsp;|&nbsp; مياه + قهوة سادة + شاي ✅</div>
+    </div>
+  </div>
+
+  <!-- MEALS TAB -->
+  <div class="section active" id="sec-meals">
+
+    <div class="today-header">
+      <div class="today-label">📅 جدولك اليومي</div>
+      <div class="streak-badge" onclick="addStreak()">🔥 <span id="streakCount">0</span> يوم</div>
+    </div>
+
+    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.7;">
+      ⏰ <strong style="color:var(--accent)">فعّل المنبهات</strong> — اضغط 🔔 جنب كل وجبة وسمح للتطبيق بالإشعارات عند الطلب
+    </div>
+
+    <!-- Meal 1 -->
+    <div class="meal-card m1">
+      <div class="meal-time">
+        <div class="time-label">2:00 م</div>
+        <button class="alarm-btn off" id="a1" onclick="toggleAlarm(1,'14:00','وجبة أولى - فك الصيام 🍳')">🔔 تفعيل</button>
+      </div>
+      <div class="meal-badge">🍳 الوجبة الأولى — فك الصيام</div>
+      <ul class="items-list">
+        <li><div class="dot"></div>4 بيضات كاملة (200 جم)</li>
+        <li><div class="dot"></div>زيت زيتون 5 جم</li>
+        <li><div class="dot"></div>شوفان 40 جم <em>أو</em> عيش بلدي 50 جم</li>
+        <li><div class="dot"></div>خيار 150 جم + طماطم 150 جم + جرجير 50 جم</li>
+        <li><div class="dot"></div>فص ثوم (يتبلع)</li>
+      </ul>
+      <div class="benefit-tag">💥 دعم هرمونات + أعصاب + بداية طاقة ثابتة</div>
+    </div>
+
+    <!-- Meal 2 -->
+    <div class="meal-card m2">
+      <div class="meal-time">
+        <div class="time-label">6:00 م</div>
+        <button class="alarm-btn off" id="a2" onclick="toggleAlarm(2,'18:00','سناك الطاقة 🍎')">🔔 تفعيل</button>
+      </div>
+      <div class="meal-badge">🍎 سناك الطاقة</div>
+      <ul class="items-list">
+        <li><div class="dot"></div>تفاح 150 جم</li>
+        <li><div class="dot"></div>لوز 20 جم</li>
+      </ul>
+      <div class="benefit-tag">💥 طاقة + زنك = دعم للتستوستيرون</div>
+    </div>
+
+    <!-- Meal 3 -->
+    <div class="meal-card m3">
+      <div class="meal-time">
+        <div class="time-label">8:30 م</div>
+        <button class="alarm-btn off" id="a3" onclick="toggleAlarm(3,'20:30','الوجبة الرئيسية 🍗')">🔔 تفعيل</button>
+      </div>
+      <div class="meal-badge">🍗 الوجبة الرئيسية</div>
+      <ul class="items-list">
+        <li><div class="dot"></div>200 جم صدر فراخ مشوي <em>أو</em> سمك</li>
+        <li><div class="dot"></div>سلطة كبيرة (خس + خيار + طماطم + جرجير) 300 جم</li>
+        <li><div class="dot"></div>رز مطبوخ 80 جم <em>أو</em> بطاطس مسلوقة 120 جم</li>
+        <li><div class="dot"></div>زيت زيتون 10 جم + زنجبيل 2–3 جم</li>
+      </ul>
+      <div class="benefit-tag">💥 بناء عضل + تحسين الدورة الدموية</div>
+    </div>
+
+    <!-- Meal 4 -->
+    <div class="meal-card m4">
+      <div class="meal-time">
+        <div class="time-label">10:30 م</div>
+        <button class="alarm-btn off" id="a4" onclick="toggleAlarm(4,'22:30','سناك النوم 🌙')">🔔 تفعيل</button>
+      </div>
+      <div class="meal-badge">🌙 قبل النوم (اختياري)</div>
+      <ul class="items-list">
+        <li><div class="dot"></div>زبادي 150 جم</li>
+        <li><div class="dot"></div>موزة صغيرة 100 جم</li>
+        <li><div class="dot"></div>رشة قرفة</li>
+      </ul>
+      <div class="benefit-tag">💥 تهدئة أعصاب + نوم أفضل + دعم جنسي</div>
+    </div>
+
+    <!-- Water -->
+    <div class="water-card">
+      <div class="water-title">💧 تتبع المياه — الهدف: 10 كوباية (2.5 لتر)</div>
+      <div class="water-cups" id="waterCups"></div>
+      <div class="water-label" id="waterLabel">0 / 10 كوباية</div>
+    </div>
+
+    <!-- Weekly -->
+    <div class="weekly-card">
+      <div class="weekly-title">🗓️ إضافات أسبوعية</div>
+      <div class="weekly-item">🐟 سمك (200 جم) مرتين أسبوعيًا بدل الفراخ</div>
+      <div class="weekly-item">🥗 بنجر 100 جم — 3 مرات أسبوعيًا</div>
+    </div>
+
+    <!-- Training -->
+    <div class="training-card">
+      <div class="training-title">🏋️ التمرين اليومي (5 أيام)</div>
+      <div class="ex-row"><span class="ex-name">💪 ضغط</span><span class="ex-reps">20 × 4</span></div>
+      <div class="ex-row"><span class="ex-name">🦵 سكوات</span><span class="ex-reps">20 × 4</span></div>
+      <div class="ex-row"><span class="ex-name">🧘 بلانك</span><span class="ex-reps">30–60 ث × 4</span></div>
+      <div class="ex-row"><span class="ex-name">🚶 مشي</span><span class="ex-reps">40 دقيقة</span></div>
+    </div>
+
+    <!-- Forbidden -->
+    <div class="forbidden-card">
+      <div class="forbidden-title">❌ الممنوعات التامة</div>
+      <div class="forbidden-list">
+        <span class="forbidden-item">سكر أبيض</span>
+        <span class="forbidden-item">دقيق أبيض</span>
+        <span class="forbidden-item">مقليات</span>
+        <span class="forbidden-item">أكل جاهز</span>
+        <span class="forbidden-item">تدخين</span>
+        <span class="forbidden-item">سهر</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SHOPPING TAB -->
+  <div class="section" id="sec-shop">
+    <div class="shop-progress">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="shopBar" style="width:0%"></div>
+      </div>
+      <div class="progress-text" id="shopTxt">0 / 0</div>
+      <button class="reset-btn" onclick="resetShop()">↺ ريست</button>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🥚 البروتين</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">بيض بلدي</div><div class="shop-item-qty">30 بيضة / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">صدر فراخ</div><div class="shop-item-qty">1 كيلو / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">سمك (بلطي / مكاريل)</div><div class="shop-item-qty">400 جم / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">زبادي طبيعي</div><div class="shop-item-qty">7 كوب / أسبوع</div></div>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🥗 خضار</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">خيار</div><div class="shop-item-qty">2 كيلو / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">طماطم</div><div class="shop-item-qty">2 كيلو / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">جرجير</div><div class="shop-item-qty">2 حزمة / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">خس</div><div class="shop-item-qty">1 رأس / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">بنجر</div><div class="shop-item-qty">300 جم / أسبوع</div></div>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🍎 فاكهة</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">تفاح</div><div class="shop-item-qty">7 حبة / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">موز صغير</div><div class="shop-item-qty">7 حبة / أسبوع</div></div>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🌾 كربوهيدرات</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">شوفان</div><div class="shop-item-qty">500 جم / شهر</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">عيش بلدي</div><div class="shop-item-qty">1 رغيف / يوم</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">رز بسمتي</div><div class="shop-item-qty">1 كيلو / شهر</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">بطاطس</div><div class="shop-item-qty">500 جم / أسبوع</div></div>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🧄 توابل وزيوت</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">زيت زيتون بكر</div><div class="shop-item-qty">500 مل / شهر</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">ثوم طازج</div><div class="shop-item-qty">رأس / أسبوع</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">زنجبيل</div><div class="shop-item-qty">200 جم / شهر</div></div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">قرفة مطحونة</div><div class="shop-item-qty">علبة / شهر</div></div>
+    </div>
+
+    <div class="shop-category">
+      <div class="shop-cat-title">🥜 مكسرات</div>
+      <div class="shop-item" onclick="toggleShop(this)"><div class="shop-check">✓</div><div class="shop-item-name">لوز طبيعي (غير محمص)</div><div class="shop-item-qty">200 جم / أسبوع</div></div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-meals" onclick="switchTab('meals')">
+      <div class="nav-icon">🍽️</div>
+      <div class="nav-label">الوجبات</div>
+    </div>
+    <div class="nav-item" id="nav-shop" onclick="switchTab('shop')">
+      <div class="nav-icon">🛒</div>
+      <div class="nav-label">التسوق</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Service Worker ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// ── PWA Install ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      dismissInstall();
+    });
+  }
+}
+
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+// ── Offline detection ──
+window.addEventListener('offline', () => document.getElementById('offlineBadge').classList.add('show'));
+window.addEventListener('online',  () => document.getElementById('offlineBadge').classList.remove('show'));
+
+// ── Date ──
+function updateDate() {
+  const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const d = new Date();
+  document.getElementById('dateDisplay').textContent = days[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1);
+}
+updateDate();
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Alarms ──
+const alarmState = {};
+const alarmTimers = {};
+
+function toggleAlarm(id, time, label) {
+  const btn = document.getElementById('a' + id);
+  if (!alarmState[id]) {
+    alarmState[id] = true;
+    btn.textContent = '🔕 إلغاء';
+    btn.className = 'alarm-btn on';
+    scheduleAlarm(id, time, label);
+    showToast('✅ منبه ' + time + ' اتفعّل!');
+    if (Notification.permission === 'default') Notification.requestPermission();
+  } else {
+    alarmState[id] = false;
+    btn.textContent = '🔔 تفعيل';
+    btn.className = 'alarm-btn off';
+    if (alarmTimers[id]) clearTimeout(alarmTimers[id]);
+    showToast('🔕 منبه ' + time + ' اتلغى');
+  }
+  saveAlarms();
+}
+
+function scheduleAlarm(id, timeStr, label) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const diff = target - now;
+  alarmTimers[id] = setTimeout(() => {
+    triggerAlarm(label);
+    if (alarmState[id]) scheduleAlarm(id, timeStr, label);
+  }, diff);
+}
+
+function triggerAlarm(label) {
+  showToast('⏰ ' + label, 5000);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.5, 1].forEach(delay => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.4);
+      o.start(ctx.currentTime + delay);
+      o.stop(ctx.currentTime + delay + 0.4);
+    });
+  } catch(e) {}
+  if (Notification.permission === 'granted') {
+    try {
+      new Notification('⏰ ' + label, {
+        body: 'حان وقت وجبتك يا لودي 💪',
+        icon: './icon-192.png',
+        vibrate: [200, 100, 200],
+        dir: 'rtl'
+      });
+    } catch(e) {}
+  }
+}
+
+function saveAlarms() {
+  localStorage.setItem('alarmState', JSON.stringify(alarmState));
+}
+
+// ── Toast ──
+function showToast(msg, dur = 2500) {
+  const t = document.getElementById('alarmToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Streak ──
+let streak = parseInt(localStorage.getItem('streak') || '0');
+let lastDay = localStorage.getItem('lastStreakDay');
+const today = new Date().toDateString();
+document.getElementById('streakCount').textContent = streak;
+
+function addStreak() {
+  if (lastDay !== today) {
+    streak++;
+    lastDay = today;
+    localStorage.setItem('streak', streak);
+    localStorage.setItem('lastStreakDay', today);
+    document.getElementById('streakCount').textContent = streak;
+    showToast('🔥 يوم ' + streak + ' في السلسلة! كمّل يا بطل 💪', 3500);
+  } else {
+    showToast('✅ يوم النهارده اتسجّل بالفعل!');
+  }
+}
+
+// ── Water ──
+let waterKey = 'water_' + today;
+let waterFilled = parseInt(localStorage.getItem(waterKey) || '0');
+
+function renderWater() {
+  const c = document.getElementById('waterCups');
+  c.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const cup = document.createElement('div');
+    cup.className = 'water-cup' + (i < waterFilled ? ' filled' : '');
+    cup.textContent = i < waterFilled ? '💧' : '○';
+    cup.onclick = () => {
+      waterFilled = (waterFilled === i + 1) ? i : i + 1;
+      localStorage.setItem(waterKey, waterFilled);
+      renderWater();
+      if (waterFilled === 10) showToast('🎉 مبروك! كملت مياهك النهارده 💧');
+    };
+    c.appendChild(cup);
+  }
+  document.getElementById('waterLabel').textContent = waterFilled + ' / 10 كوباية';
+}
+renderWater();
+
+// ── Shopping ──
+function updateShopProgress() {
+  const all = document.querySelectorAll('#sec-shop .shop-item');
+  const done = document.querySelectorAll('#sec-shop .shop-item.checked').length;
+  const pct = all.length ? Math.round(done / all.length * 100) : 0;
+  document.getElementById('shopBar').style.width = pct + '%';
+  document.getElementById('shopTxt').textContent = done + ' / ' + all.length + ' اشتريت';
+}
+
+function toggleShop(el) {
+  el.classList.toggle('checked');
+  updateShopProgress();
+  const state = Array.from(document.querySelectorAll('#sec-shop .shop-item')).map(i => i.classList.contains('checked'));
+  localStorage.setItem('shopState', JSON.stringify(state));
+}
+
+function resetShop() {
+  document.querySelectorAll('#sec-shop .shop-item').forEach(i => i.classList.remove('checked'));
+  localStorage.removeItem('shopState');
+  updateShopProgress();
+}
+
+(function restoreShop() {
+  const state = JSON.parse(localStorage.getItem('shopState') || '[]');
+  document.querySelectorAll('#sec-shop .shop-item').forEach((el, i) => { if (state[i]) el.classList.add('checked'); });
+  updateShopProgress();
+})();
+
+// ── Daily reset at midnight ──
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() === 0 && now.getMinutes() === 0) {
+    waterKey = 'water_' + now.toDateString();
+    waterFilled = 0;
+    renderWater();
+    updateDate();
+  }
+}, 60000);
+</script>
+</body>
+</html>
